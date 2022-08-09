@@ -1,14 +1,17 @@
 import React, {useState} from "react";
-import { View, StyleSheet, TextInput} from "react-native";
+import { View, StyleSheet, TextInput, Button} from "react-native";
+
 
 const InputBox = (props) => {
-  const [password, setPassword] = useState('');
-  const changeText = (text) => {
-    setPassword(text);
-  }
+  const { title, updateDateMode } = props;
+  // const [password, setPassword,] = useState('');
+  // const changeText = (text) => {
+  //   setPassword(text);
+  // }
   return (
     <View style={styles.inputContainerPassword}>
-        <TextInput value={password} onChangeText={(text) => changeText(text)} style={styles.inputStyle} placeholder="date" autoCapitalize="none" autoCorrect={false} />
+        <Button title={title} onPress={() => updateDateMode()} />
+        {/* <TextInput value={password} onChangeText={(text) => changeText(text)} style={styles.inputStyle} placeholder="date" autoCapitalize="none" autoCorrect={false} /> */}
     </View>
   );
 }
