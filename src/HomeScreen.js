@@ -24,7 +24,6 @@ const HomeScreen = (props) => {
   const baseUrl = "https://api.data.gov.sg/v1";
 
   useEffect(() => {
-    console.log("UseEffect - ", date);
     if (date === "") {
       onDateChange(new Date());
     } else {
@@ -32,21 +31,7 @@ const HomeScreen = (props) => {
     }
   }, [date]);
 
-  // const trafficApiResults = async () => {
-  //   console.log("TrafficAPI - ", date);
-  //   const data = await axios({
-  //     method: 'get',
-  //     url: `${baseUrl}/transport/traffic-images?date_time=${date}`,
-  //   }).then(response => {
-
-  //     return response.data;
-  //   })
-
-  //   return data;
-  // }
-
   const getResultsFromAPI = async (urlString) => {
-    console.log("WeatherAPI - ", date);
     const data = await axios({
       method: 'get',
       url: `${baseUrl}${urlString}${date}`,
