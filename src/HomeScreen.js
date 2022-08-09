@@ -28,28 +28,28 @@ const HomeScreen = (props) => {
     if (date === "") {
       onDateChange(new Date());
     } else {
-      retrieveDataFromAPI();
+      retrieveAllData();
     }
   }, [date]);
 
-  const trafficApiResults = async () => {
-    console.log("TrafficAPI - ", date);
-    const data = await axios({
-      method: 'get',
-      url: `${baseUrl}/transport/traffic-images?date_time=${date}`,
-    }).then(response => {
+  // const trafficApiResults = async () => {
+  //   console.log("TrafficAPI - ", date);
+  //   const data = await axios({
+  //     method: 'get',
+  //     url: `${baseUrl}/transport/traffic-images?date_time=${date}`,
+  //   }).then(response => {
 
-      return response.data;
-    })
+  //     return response.data;
+  //   })
 
-    return data;
-  }
+  //   return data;
+  // }
 
-  const weatherApiResults = async () => {
+  const getResultsFromAPI = async (urlString) => {
     console.log("WeatherAPI - ", date);
     const data = await axios({
       method: 'get',
-      url: `${baseUrl}/environment/2-hour-weather-forecast?date_time=${date}`,
+      url: `${baseUrl}${urlString}${date}`,
     }).then(response => {
       return response.data;
     })
@@ -76,7 +76,8 @@ const HomeScreen = (props) => {
     let nearestLocation = null
 
     for (var locationObj of readLocationArr) {
-      const proximityValue = Math.pow((camera.location.latitude - locationObj.latitude), 2) + Math.pow((camera.location.longitude - locationObj.longitude), 2);
+      const proximityValue = Math.pow((camera.location.latitude - locationObj.latitude), 2)
+        + Math.pow((camera.location.longitude - locationObj.longitude), 2);
 
       if (proximityValue < closestProximityValue) {
         closestProximityValue = proximityValue;
@@ -87,7 +88,7 @@ const HomeScreen = (props) => {
   }
 
   const updateTrafficLocation = (nearestLocation, camera, trafficVar) => {
-    
+
     if (nearestLocation !== null) {
       const updatedCamera = {
         ...camera,
@@ -112,84 +113,35 @@ const HomeScreen = (props) => {
 
       };
       return trafficVar;
-    } else {
-      console.log("Not working properly! check nearestLocation");
     }
 
   }
 
-  const retrieveDataFromAPI = async () => {
+  const retrieveAllData = async () => {
 
-    trafficApiResults().then(trafficApiData => {
+    getResultsFromAPI("/transport/traffic-images?date_time=").then(trafficApiData => {
 
-      weatherApiResults().then(weatherApiData => {
+      getResultsFromAPI("/environment/2-hour-weather-forecast?date_time=").then(weatherApiData => {
         let weatherVar = { ...weatherApiData };
         let trafficVar = { ...trafficApiData };
 
         let readLocationArr = [];
 
         if (Object.keys(weatherVar).length !== 0 && Object.keys(trafficVar).length !== 0) {
-          // for (var metadata of weatherVar.area_metadata) {
-          //   const currData = {
-          //     location: metadata.name,
-          //     longitude: metadata.label_location.longitude,
-          //     latitude: metadata.label_location.latitude,
-          //     forecastInfo: weatherVar.items[0].forecasts.filter((item) => item.area === metadata.name),
-          //   }
 
-          //   readLocationArr.push(currData);
-          // }
           readLocationArr = populateReadLocationData(readLocationArr, weatherVar);
 
           for (var camera of trafficVar.items[0].cameras) {
-            // let closestProximityValue = Number.MAX_SAFE_INTEGER;
-            // let nearestLocation = null
-
-            // for (var locationObj of readLocationArr) {
-            //   const proximityValue = Math.pow((camera.location.latitude - locationObj.latitude), 2) + Math.pow((camera.location.longitude - locationObj.longitude), 2);
-
-            //   if (proximityValue < closestProximityValue) {
-            //     closestProximityValue = proximityValue;
-            //     nearestLocation = { ...locationObj };
-            //   }
-            // }
             let nearestLocation = getNearestLocation(camera, readLocationArr);
             trafficVar = updateTrafficLocation(nearestLocation, camera, trafficVar);
-            //nearestLocation, camera, trafficVar
-            // if (nearestLocation !== null) {
-            //   const updatedCamera = {
-            //     ...camera,
-            //     location: {
-            //       ...camera.location,
-            //       area: nearestLocation.location,
-            //       forecastInfo: nearestLocation.forecastInfo
-            //     }
-            //   }
-
-            //   trafficVar = {
-            //     ...trafficVar,
-            //     items: [{
-            //       ...trafficVar.items[0],
-            //       cameras: [
-            //         ...trafficVar.items[0].cameras.map((item) => (
-            //           (item.location.latitude === updatedCamera.location.latitude)
-            //           && (item.location.longitude === updatedCamera.location.longitude)
-            //         ) ? updatedCamera : item)
-            //       ]
-            //     }]
-
-            //   };
-            // } else {
-            //   console.log("Not working properly! check nearestLocation");
-            // }
-
           }
+
           setErrorMsg("");
           setWeatherData(weatherVar);
           setTrafficData(trafficVar);
           setSelectedCamera({});
         }
-        
+
       }).catch(err => {
         setErrorMsg("Failed to retrieve information for the requested date and time.")
         setWeatherData({});
