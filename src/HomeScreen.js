@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import InputBox from './common/InputBox';
+import DateButton from './common/DateButton';
 import axios from 'axios';
 import { View, StyleSheet, Text, TouchableOpacity, FlatList, Image, ScrollView } from 'react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import CardSkeleton from './common/CardSkeleton';
+import WeatherInfoCard from './common/WeatherInfoCard';
+import TrafficImageCard from './common/TrafficImageCard';
+import LocationCard from './common/LocationCard';
+import DateAndTime from './common/DateAndTime';
 
 const HomeScreen = (props) => {
 
@@ -14,62 +19,107 @@ const HomeScreen = (props) => {
   const [weatherData, setWeatherData] = useState({});
 
   const [selectedCamera, setSelectedCamera] = useState({});
+  const [errorMsg, setErrorMsg] = useState("");
 
   const baseUrl = "https://api.data.gov.sg/v1";
-  // const date = "2022-08-07";
-  const dateTime = "2021-12-08T14:12:12"
-  // useEffect(() => {
-  //   axios({
-  //     method: 'get',
-  //     url: `${baseUrl}/transport/traffic-images?date_time=${dateTime}` 
-  //     url: `${baseUrl}/environment/2-hour-weather-forecast?date_time=${dateTime}`
-  //     // url: `${baseUrl}/environment/2-hour-weather-forecast?date=${date}`
-  //   }).then(response => {
-  //     console.log(response.data);
-  //   })
-  // },[]);
 
   useEffect(() => {
     console.log("UseEffect - ", date);
-    if(date === "") {
+    if (date === "") {
       onDateChange(new Date());
     } else {
       retrieveDataFromAPI();
     }
-  },[date]);
+  }, [date]);
 
+  const trafficApiResults = async () => {
+    console.log("TrafficAPI - ", date);
+    const data = await axios({
+      method: 'get',
+      url: `${baseUrl}/transport/traffic-images?date_time=${date}`,
+    }).then(response => {
+
+      return response.data;
+    })
+
+    return data;
+  }
+
+  const weatherApiResults = async () => {
+    console.log("WeatherAPI - ", date);
+    const data = await axios({
+      method: 'get',
+      url: `${baseUrl}/environment/2-hour-weather-forecast?date_time=${date}`,
+    }).then(response => {
+      return response.data;
+    })
+
+    return data;
+  }
+
+  const populateReadLocationData = (readLocationArr, weatherVar) => {
+    for (var metadata of weatherVar.area_metadata) {
+      const currData = {
+        location: metadata.name,
+        longitude: metadata.label_location.longitude,
+        latitude: metadata.label_location.latitude,
+        forecastInfo: weatherVar.items[0].forecasts.filter((item) => item.area === metadata.name),
+      }
+
+      readLocationArr.push(currData);
+    }
+    return readLocationArr;
+  }
+
+  const getNearestLocation = (camera, readLocationArr) => {
+    let closestProximityValue = Number.MAX_SAFE_INTEGER;
+    let nearestLocation = null
+
+    for (var locationObj of readLocationArr) {
+      const proximityValue = Math.pow((camera.location.latitude - locationObj.latitude), 2) + Math.pow((camera.location.longitude - locationObj.longitude), 2);
+
+      if (proximityValue < closestProximityValue) {
+        closestProximityValue = proximityValue;
+        nearestLocation = { ...locationObj };
+      }
+    }
+    return nearestLocation;
+  }
+
+  const updateTrafficLocation = (nearestLocation, camera, trafficVar) => {
+    
+    if (nearestLocation !== null) {
+      const updatedCamera = {
+        ...camera,
+        location: {
+          ...camera.location,
+          area: nearestLocation.location,
+          forecastInfo: nearestLocation.forecastInfo
+        }
+      }
+
+      trafficVar = {
+        ...trafficVar,
+        items: [{
+          ...trafficVar.items[0],
+          cameras: [
+            ...trafficVar.items[0].cameras.map((item) => (
+              (item.location.latitude === updatedCamera.location.latitude)
+              && (item.location.longitude === updatedCamera.location.longitude)
+            ) ? updatedCamera : item)
+          ]
+        }]
+
+      };
+      return trafficVar;
+    } else {
+      console.log("Not working properly! check nearestLocation");
+    }
+
+  }
 
   const retrieveDataFromAPI = async () => {
-    // props.navigation.navigate("Location");
-    const trafficApiResults = async () => {
-      console.log("TrafficAPI - ", date);
-      const data = await axios({
-        method: 'get',
-        url: `${baseUrl}/transport/traffic-images?date_time=${date}`,
-      }).then(response => {
 
-        return response.data;
-      })
-
-      return data;
-    }
-
-    const weatherApiResults = async () => {
-      console.log("WeatherAPI - ", date);
-      const data = await axios({
-        method: 'get',
-        url: `${baseUrl}/environment/2-hour-weather-forecast?date_time=${date}`,
-      }).then(response => {
-        return response.data;
-      })
-
-      return data;
-    }
-
-
-    // add locationData forEach cameras[i] object in trafficVar.items[0].cameras
-    // in the nested for loop, find the closest location in readLocationArr
-    // nearestLocation found
     trafficApiResults().then(trafficApiData => {
 
       weatherApiResults().then(weatherApiData => {
@@ -79,202 +129,185 @@ const HomeScreen = (props) => {
         let readLocationArr = [];
 
         if (Object.keys(weatherVar).length !== 0 && Object.keys(trafficVar).length !== 0) {
-          for (var metadata of weatherVar.area_metadata) {
-            const currData = {
-              location: metadata.name,
-              longitude: metadata.label_location.longitude,
-              latitude: metadata.label_location.latitude,
-              forecastInfo: weatherVar.items[0].forecasts.filter((item) => item.area === metadata.name),
-            }
+          // for (var metadata of weatherVar.area_metadata) {
+          //   const currData = {
+          //     location: metadata.name,
+          //     longitude: metadata.label_location.longitude,
+          //     latitude: metadata.label_location.latitude,
+          //     forecastInfo: weatherVar.items[0].forecasts.filter((item) => item.area === metadata.name),
+          //   }
 
-            readLocationArr.push(currData);
-          }
+          //   readLocationArr.push(currData);
+          // }
+          readLocationArr = populateReadLocationData(readLocationArr, weatherVar);
 
           for (var camera of trafficVar.items[0].cameras) {
-            let closestProximityValue = Number.MAX_SAFE_INTEGER;
-            let nearestLocation = null
+            // let closestProximityValue = Number.MAX_SAFE_INTEGER;
+            // let nearestLocation = null
 
-            for (var locationObj of readLocationArr) {
-              const proximityValue = Math.pow((camera.location.latitude - locationObj.latitude), 2) + Math.pow((camera.location.longitude - locationObj.longitude), 2);
+            // for (var locationObj of readLocationArr) {
+            //   const proximityValue = Math.pow((camera.location.latitude - locationObj.latitude), 2) + Math.pow((camera.location.longitude - locationObj.longitude), 2);
 
-              if (proximityValue < closestProximityValue) {
-                closestProximityValue = proximityValue;
-                nearestLocation = { ...locationObj };
-              }
-            }
+            //   if (proximityValue < closestProximityValue) {
+            //     closestProximityValue = proximityValue;
+            //     nearestLocation = { ...locationObj };
+            //   }
+            // }
+            let nearestLocation = getNearestLocation(camera, readLocationArr);
+            trafficVar = updateTrafficLocation(nearestLocation, camera, trafficVar);
+            //nearestLocation, camera, trafficVar
+            // if (nearestLocation !== null) {
+            //   const updatedCamera = {
+            //     ...camera,
+            //     location: {
+            //       ...camera.location,
+            //       area: nearestLocation.location,
+            //       forecastInfo: nearestLocation.forecastInfo
+            //     }
+            //   }
 
-            if (nearestLocation !== null) {
-              const updatedCamera = {
-                ...camera,
-                location: {
-                  ...camera.location,
-                  area: nearestLocation.location,
-                  forecastInfo: nearestLocation.forecastInfo
-                }
-              }
+            //   trafficVar = {
+            //     ...trafficVar,
+            //     items: [{
+            //       ...trafficVar.items[0],
+            //       cameras: [
+            //         ...trafficVar.items[0].cameras.map((item) => (
+            //           (item.location.latitude === updatedCamera.location.latitude)
+            //           && (item.location.longitude === updatedCamera.location.longitude)
+            //         ) ? updatedCamera : item)
+            //       ]
+            //     }]
 
-              trafficVar = {
-                ...trafficVar,
-                items: [{
-                  ...trafficVar.items[0],
-                  cameras: [
-                    ...trafficVar.items[0].cameras.map((item) => (
-                      (item.location.latitude === updatedCamera.location.latitude)
-                      && (item.location.longitude === updatedCamera.location.longitude)
-                    ) ? updatedCamera : item)
-                  ]
-                }]
-
-              };
-            } else {
-              console.log("Not working properly! check nearestLocation");
-            }
+            //   };
+            // } else {
+            //   console.log("Not working properly! check nearestLocation");
+            // }
 
           }
+          setErrorMsg("");
+          setWeatherData(weatherVar);
+          setTrafficData(trafficVar);
+          setSelectedCamera({});
         }
-
-        setWeatherData(weatherVar);
-        setTrafficData(trafficVar);
+        
       }).catch(err => {
-        console.log("ERR:", err);
+        setErrorMsg("Failed to retrieve information for the requested date and time.")
+        setWeatherData({});
+        setTrafficData({});
+        setSelectedCamera({});
       })
+    }).catch(err => {
+      setErrorMsg("Failed to retrieve information for the requested date and time.")
+      setWeatherData({});
+      setTrafficData({});
+      setSelectedCamera({});
     })
 
   }
 
   const onDateChange = (dateChanged) => {
-    // let currDate = (dateChanged === "") ? new Date() : new Date(dateChanged);
     let currDate = new Date(dateChanged);
-    console.log("onDateChanged:", currDate);
-    // console.log("onDateChanged:", currDate.splice(0, currDate.toString().indexOf('.')));
-    // let formatDate = currDate.getDate() + "-" + currDate.getMonth() + "-" + currDate.getFullYear();
 
-    let formatDate = formatDateUnits(currDate.getFullYear()) +  "-" + formatDateUnits(currDate.getMonth()+1) + "-" + formatDateUnits(currDate.getDate());
-    let formatTime = formatDateUnits(currDate.getHours()) + ":" + formatDateUnits(currDate.getMinutes()) + ":00" ;
+    let formatDate = formatDateUnits(currDate.getFullYear())
+      + "-" + formatDateUnits(currDate.getMonth() + 1)
+      + "-" + formatDateUnits(currDate.getDate());
+
+    let formatTime = formatDateUnits(currDate.getHours())
+      + ":" + formatDateUnits(currDate.getMinutes())
+      + ":00";
+
     const formattedDate = formatDate + 'T' + formatTime;
-    // setShowDialogBox(Platform.OS === 'ios');
-    setShowDialogBox(false);
+    closeDialogBox();
     setDate(formattedDate);
-    // setPickerDate(currDate);
-    // return formattedDate;
   }
 
   const formatDateUnits = (dateUnit) => {
-    if(dateUnit < 10) {
+    if (dateUnit < 10) {
       return "0" + dateUnit;
     }
     return dateUnit;
   }
 
-  const retrieveCamAndWeather = (item) => {
-    console.log(item);
-    setSelectedCamera(item);
+  const updateSelectedCamera = (camera) => {
+    setSelectedCamera(camera);
   }
 
   const updateDateMode = (dateMode) => {
     setShowDialogBox(true);
     setDateMode(dateMode);
   }
-  
+
   const closeDialogBox = () => {
     setShowDialogBox(false);
   }
 
   return (
-    <View>
-      <ScrollView>
-        <Text>
-          HomeScreen
-        </Text>
-        <Text>Pick Date</Text>
-        <Text>Pick Time</Text>
-        <Text>{date.slice(0,date.indexOf('T'))}</Text>
-        <Text>{date.slice(date.indexOf('T')+1, date.length)}</Text>
+    <View style={styles.containerStyle}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {!!errorMsg ? <Text style={styles.errorMsgStyle}>{errorMsg}</Text> : null}
 
-        <InputBox title="Pick Date" updateDateMode={() => updateDateMode('date')} />
+        <View style={styles.dateContainerStyle}>
+          <DateButton title="Pick Date" updateDateMode={() => updateDateMode('date')} />
+          <DateButton title="Pick Time" updateDateMode={() => updateDateMode('time')} />
+        </View>
 
-        <InputBox title="Pick Time" updateDateMode={() => updateDateMode('time')} />
 
-        
-         {showDialogBox && (
-           <DateTimePickerModal
-           date={(new Date(date))}
-           isVisible={showDialogBox}
-           mode={dateMode}
-           onConfirm={onDateChange}
-           onCancel={closeDialogBox}
-         />
-         )}
-        
-        <TouchableOpacity style={styles.btnStyle} onPress={() => onDateChange("2022-12-08T14:12:00")}>
-          <Text>SUBMIT</Text>
-        </TouchableOpacity>
+        <DateAndTime
+          dateInfo={`Selected Date: ${date.slice(0, date.indexOf('T'))}`}
+          timeInfo={`Selected Time: ${date.slice(date.indexOf('T') + 1, date.length)}`}
+        />
 
-        {Object.keys(weatherData).length !== 0 ?
-          <FlatList
-            data={weatherData.area_metadata}
-            keyExtractor={(result) => result.name}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              // <Image style={styles.activityImageStyle} source={{ uri: item }} />
-              <Text>{item.name}</Text>
-            )}
-          />
 
+        {(Object.keys(trafficData).length !== 0) ?
+          <CardSkeleton title="Locations">
+            <LocationCard cameras={trafficData.items[0].cameras} updateSelectedCamera={updateSelectedCamera} />
+          </CardSkeleton>
           : null
         }
 
-        {/* display location.area camera_id */}
-        <View style={{ maxHeight: 500, width: "100%", borderColor: "red", borderWidth: 1 }}>
-          {(Object.keys(trafficData).length !== 0) ?
-            <FlatList
-              data={trafficData.items[0].cameras}
-              keyExtractor={(result) => result.image}
-              showsHorizontalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.btnStyle} onPress={() => retrieveCamAndWeather(item)}>
-                  <Image style={styles.trafficImageStyle} source={{ uri: item.image }} />
-                </TouchableOpacity>
-              )}
-            />
-            : null
-          }
 
-        </View>
 
-        <View>
-          {(Object.keys(selectedCamera).length !== 0) ?
-            <View>
-              <Text>{selectedCamera.location.area}</Text>
-              <Text>{selectedCamera.location.forecastInfo[0].forecast}</Text>
+        {(Object.keys(selectedCamera).length !== 0) ?
+          <View>
+            <CardSkeleton title="Weather Information">
+              <WeatherInfoCard selectedCamera={selectedCamera} />
+            </CardSkeleton>
 
-              <Image style={styles.trafficImageStyle} source={{ uri: selectedCamera.image }} />
-            </View> 
-            : null
-          }
-        </View>
+            <CardSkeleton title="Traffic Cam Photo">
+              <TrafficImageCard selectedCamera={selectedCamera} />
+            </CardSkeleton>
+          </View>
+          : null
+        }
+
+        {showDialogBox && (
+          <DateTimePickerModal
+            date={(new Date(date))}
+            isVisible={showDialogBox}
+            mode={dateMode}
+            onConfirm={onDateChange}
+            onCancel={closeDialogBox}
+          />
+        )}
+
       </ScrollView>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  btnStyle: {
-    width: 200,
-    height: 30,
-    marginVertical: 10,
+  containerStyle: {
     marginHorizontal: 10,
-    borderColor: "red",
-    borderWidth: 1,
+    marginVertical: 10
   },
-  trafficImageStyle: {
-    width: "90%",
-    height: 15,
-    marginHorizontal: "5%",
-    marginVertical: "5%",
-    borderRadius: 10
+  errorMsgStyle: {
+    color: 'red'
   },
+  dateContainerStyle: {
+    flexDirection: "row",
+    justifyContent: 'space-between',
+    marginVertical: 10
+  }
 })
 
 export default HomeScreen;
