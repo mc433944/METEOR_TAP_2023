@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   textStyle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "bold",
     color: "white"
   }
