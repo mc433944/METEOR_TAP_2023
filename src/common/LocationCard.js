@@ -9,7 +9,8 @@ const LocationCard = (props) => {
     <FlatList
       data={cameras}
       keyExtractor={(camera) => camera.camera_id}
-      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+      horizontal
       renderItem={({ item }) => (
         <TouchableOpacity style={styles.btnStyle} onPress={() => updateSelectedCamera(item)}>
           <Text style={styles.cardTitleStyle}>{item.location.area}</Text>
@@ -31,7 +32,8 @@ const styles = StyleSheet.create({
     marginVertical: 5,
     marginHorizontal: 5,
     backgroundColor: "white",
-    height: 80,
+    width: 300,
+    height: "97%",
     justifyContent: 'center',
     alignItems: 'center'
   },
