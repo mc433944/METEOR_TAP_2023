@@ -14,7 +14,7 @@ const DateButton = (props) => {
 
 const styles = StyleSheet.create({
   textStyle: {
-    fontSize: 18,
+    fontSize: 22,
     color: '#007AFF'
   },
   containerStyle: {

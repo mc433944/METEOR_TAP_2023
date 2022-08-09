@@ -17,8 +17,9 @@ const CardSkeleton = (props) => {
 
 const styles = StyleSheet.create({
   titleStyle: {
-    fontSize: 22, 
-    color: '#007AFF'
+    fontSize: 22,
+    color: "#990a99",
+    marginBottom: 10
   },
   innerContainerStyle: {
     height: 300, 
@@ -30,7 +31,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   containerStyle: {
-    marginBottom: 20
+    marginVertical: 20
   }
 })
 

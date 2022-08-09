@@ -38,8 +38,9 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   cardTitleStyle: {
-    fontSize: 18,
-    fontWeight: "bold"
+    fontSize: 40,
+    fontWeight: "bold",
+    color: '#990a99',
   }
 })
 
